@@ -6,8 +6,8 @@ import os
 load_dotenv()
 
 
-#client = OpenAI(api_key=os.getenv('API_OAI_KEY'))
-#assistant = client.beta.assistants.retrieve(os.getenv('OAI_ASSISTANT_ID'))
+client = OpenAI(api_key=os.getenv('API_OAI_KEY'))
+assistant = client.beta.assistants.retrieve(os.getenv('OAI_ASSISTANT_ID'))
 
 
 app = Flask(__name__)
