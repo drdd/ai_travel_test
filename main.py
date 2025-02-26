@@ -1,48 +1,103 @@
 from flask import Flask, request, jsonify
 from openai import OpenAI
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-
-client = OpenAI(api_key=os.getenv('API_OAI_KEY'))
-assistant = client.beta.assistants.retrieve(os.getenv('OAI_ASSISTANT_ID'))
 
 
 app = Flask(__name__)
 
-@app.route('/q', methods=['POST'])
-def your_route():
+@app.route('/t', methods=['POST'])
+def get_thread():
+    """
+    Обрабатывает POST запросы на /t.
+
+    Ожидаемые параметры JSON:
+    - api_key (str): API ключь для OpenAI. Обязательный.
+    """
     if request.is_json:
         data = request.get_json()
-        if "uid" in data and "msg" in data:
-            return jsonify({"msg": assistent_queary(data['uid'],data['msg'])}), 200
-        return jsonify({"error": "uid или msg не задан"}), 400
+        if "api_key" in data:
+            try:
+                client = make_client_openai(data['api_key'])
+                thread = client.beta.threads.create()
+                return jsonify({"msg": "ok", "thread_id": f"{thread.id}"}), 200
+            except Exception as e:
+                return jsonify({"msg": "Неверный api_key"}), 400
+
+
+@app.route('/q', methods=['POST'])
+def send_message():
+    """
+    Обрабатывает POST запросы на /q.
+
+    Ожидаемые параметры JSON:
+    - api_key (str): API ключь для OpenAI. Обязательный.
+    - assistant_id (str): ASSISTANT ID для OpenAI. Обязательный.
+    - thread_id (str): thread_id для OpenAI. Обязательный.
+    - msg (str): Текст сообщения для обработки OpenAI. Обязательный.
+    """
+    if request.is_json:
+        data = request.get_json()
+        if "assistant_id" in data and "api_key" in data and "thread_id" in data and "msg" in data:
+            if data['msg'].strip() == "":
+                return jsonify({"msg": "Повторите я не понял."}), 400
+            else:
+                try:
+                    client = make_client_openai(data['api_key'])
+                    assistant = make_assistant_openai(client, data['assistant_id'])
+                    thread_id = get_exists_thread_id(client, data['thread_id'])
+                    if thread_id == "":
+                        return jsonify({"msg": f"Ошибка потока OpenAI"}), 400
+
+                    answer = assistent_queary(client, assistant, thread_id, data['msg'])
+                    return jsonify({"msg": f"{answer}", "thread_id": f"{thread_id}"}), 200
+                except Exception as e:
+                    return jsonify({"msg": f"Ошибка {e}"}), 400
+        else:
+            return jsonify({"msg": "Недостатачный пакет данных в запросе"}), 400
     else:
-        return jsonify({"error": "Данные не в формате JSON"}), 400
+        return jsonify({"msg": "Данные не в формате JSON"}), 400
 
+def make_client_openai(api_key):
+    client = OpenAI(api_key=api_key)
+    return client
+def make_assistant_openai(client, assistant_id):
+    assistant = client.beta.assistants.retrieve(assistant_id)
+    return assistant
 
-def assistent_queary(user_id, message):
-    thread = client.beta.threads.create()
+def get_exists_thread_id(client, thread_id):
+    try:
+        thread = client.beta.threads.retrieve(thread_id=thread_id)
+        if thread:
+            return thread_id
+    except Exception as e:
+        try:
+            error_type = e.response.json()['error']['type']
+            if error_type == 'invalid_request_error':
+                thread = client.beta.threads.create()
+                return thread.id
+        except (AttributeError, KeyError):
+            return ""
+        return ""
+
+def assistent_queary(client, assistant, thread_id, message):
     client.beta.threads.messages.create(
-        thread_id=thread.id,
+        thread_id=thread_id,
         role="user",
         content=message
     )
 
     run = client.beta.threads.runs.create_and_poll(
-        thread_id=thread.id,
+        thread_id=thread_id,
         assistant_id=assistant.id,
         instructions="",
     )
 
     if run.status == "completed":
-        messages = client.beta.threads.messages.list(thread_id=thread.id)
+        messages = client.beta.threads.messages.list(thread_id=thread_id)
 
         for msg in messages:
             assert msg.content[0].type == "text"
             return msg.content[0].text.value
+
 
 if __name__ == '__main__':
     app.run(debug=True)
