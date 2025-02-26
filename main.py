@@ -46,7 +46,8 @@ def get_message():
                 answer = get_response(client, assistant, thread_id)
 
                 encoded_data = encode_json({"msg": f'{answer}', "thread_id": f"{thread_id}"})
-                json_str = json.dumps(encoded_data, ensure_ascii=False)
+                decoded_data = decode_json(encoded_data)
+                json_str = json.dumps(decoded_data, ensure_ascii=False)
                 return jsonify(json.loads(json_str)), 200
                 #return jsonify({"msg": f'{answer}', "thread_id": f"{thread_id}"}), 200
             except Exception as e:
@@ -151,6 +152,25 @@ def encode_json(json_data):
         return [encode_json(item) for item in json_data]
     elif isinstance(json_data, str):
         return encode_string(json_data)
+    else:
+        return json_data
+
+def decode_string(encoded_string):
+    decoded_string = urllib.parse.unquote(encoded_string)
+    return decoded_string
+
+def decode_json(json_data):
+    if isinstance(json_data, dict):
+        decoded_data = {}
+        for key, value in json_data.items():
+            decoded_key = decode_string(key)
+            decoded_value = decode_json(value)
+            decoded_data[decoded_key] = decoded_value
+        return decoded_data
+    elif isinstance(json_data, list):
+        return [decode_json(item) for item in json_data]
+    elif isinstance(json_data, str):
+        return decode_string(json_data)
     else:
         return json_data
 
