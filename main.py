@@ -74,7 +74,7 @@ def send_message():
                     if thread_id == "":
                         return jsonify({"msg": f"Ошибка потока OpenAI"}), 400
 
-                    assistent_queary(client, assistant, thread_id, data['msg'])
+                    assistent_queary(client, thread_id, data['msg'])
                     return jsonify({"msg": "ok", "thread_id": f"{thread_id}"}), 200
                 except Exception as e:
                     return jsonify({"msg": f"Ошибка {e}"}), 400
