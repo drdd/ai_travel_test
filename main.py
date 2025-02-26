@@ -120,22 +120,14 @@ def assistent_queary(client, assistant, thread_id, message):
         assistant_id=assistant.id,
         instructions=""
     )
-
-def get_response(client, assistant, thread_id):
-    run = client.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=assistant.id,
-        instructions=""
-    )
-
     while run.status != "completed":
         run = client.beta.threads.runs.retrieve(run_id=run.id, thread_id=thread_id)
 
-    if run.status == "completed":
-        messages = client.beta.threads.messages.list(thread_id=thread_id)
-        for msg in messages:
-            if msg.content[0].type == "text":
-                return msg.content[0].text.value
+def get_response(client, assistant, thread_id):
+    messages = client.beta.threads.messages.list(thread_id=thread_id)
+    for msg in messages:
+        if msg.content[0].type == "text":
+            return msg.content[0].text.value
 
 
 if __name__ == '__main__':
