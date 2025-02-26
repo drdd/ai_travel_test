@@ -120,7 +120,7 @@ def get_response(client, assistant, thread_id):
     )
 
     while run.status != "completed":
-        run = client.beta.threads.runs.retrieve(run_id=run.id)
+        run = client.beta.threads.runs.retrieve(run_id=run.id, thread_id=thread_id)
 
     if run.status == "completed":
         messages = client.beta.threads.messages.list(thread_id=thread_id)
