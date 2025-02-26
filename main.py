@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 from openai import OpenAI
+import json
+import urllib.parse
 
 
 app = Flask(__name__)
@@ -42,8 +44,11 @@ def get_message():
                 if thread_id == "":
                     return jsonify({"msg": f"Ошибка потока OpenAI"}), 400
                 answer = get_response(client, assistant, thread_id)
-                answer = answer.replace('"', "'").replace("\n", "")
-                return jsonify({"msg": f'{answer}', "thread_id": f"{thread_id}"}), 200
+
+                encoded_data = encode_json({"msg": f'{answer}', "thread_id": f"{thread_id}"})
+                json_str = json.dumps(encoded_data, ensure_ascii=False)
+                return jsonify(json.loads(json_str)), 200
+                #return jsonify({"msg": f'{answer}', "thread_id": f"{thread_id}"}), 200
             except Exception as e:
                 return jsonify({"msg": f"Ошибка {e}"}), 400
         else:
@@ -130,6 +135,24 @@ def get_response(client, assistant, thread_id):
                 return msg.content[0].text.value
 
 
+def encode_string(input_string):
+    encoded_string = urllib.parse.quote(input_string, safe='')
+    return encoded_string
+
+def encode_json(json_data):
+    if isinstance(json_data, dict):
+        encoded_data = {}
+        for key, value in json_data.items():
+            encoded_key = encode_string(key)
+            encoded_value = encode_json(value)
+            encoded_data[encoded_key] = encoded_value
+        return encoded_data
+    elif isinstance(json_data, list):
+        return [encode_json(item) for item in json_data]
+    elif isinstance(json_data, str):
+        return encode_string(json_data)
+    else:
+        return json_data
 
 if __name__ == '__main__':
     app.run(debug=True)
