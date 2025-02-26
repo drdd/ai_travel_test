@@ -1,11 +1,8 @@
-from flask import Flask, request, jsonify, make_response
-import json
-import re
+from flask import Flask, request, jsonify
 from openai import OpenAI
 
 
 app = Flask(__name__)
-
 
 @app.route('/t', methods=['POST'])
 def get_thread():
@@ -45,11 +42,8 @@ def get_message():
                 if thread_id == "":
                     return jsonify({"msg": f"Ошибка потока OpenAI"}), 400
                 answer = get_response(client, assistant, thread_id)
-                json_str = custom_json_dumps({"msg": f"{answer}", "thread_id": f"{thread_id}"})
-                response = make_response(json_str, 200)
-                response.headers['Content-Type'] = 'application/json'
-                return response
-                #return jsonify({"msg": f'{answer}', "thread_id": f"{thread_id}"}), 200
+                answer = answer.replace('"', "'").replace('\n', "<br/>")
+                return jsonify({"msg": f'{answer}', "thread_id": f"{thread_id}"}), 200
             except Exception as e:
                 return jsonify({"msg": f"Ошибка {e}"}), 400
         else:
@@ -135,21 +129,6 @@ def get_response(client, assistant, thread_id):
             if msg.content[0].type == "text":
                 return msg.content[0].text.value
 
-def custom_json_dumps(obj):
-    if isinstance(obj, dict):
-        items = []
-        for k, v in obj.items():
-            key = f"'{k}'"
-            value = custom_json_dumps(v)
-            items.append(f"{key}: {value}")
-        return f"{{{', '.join(items)}}}"
-    elif isinstance(obj, list):
-        items = [custom_json_dumps(i) for i in obj]
-        return f"[{', '.join(items)}]"
-    elif isinstance(obj, str):
-        return f"'{obj}'"
-    else:
-        return json.dumps(obj)
 
 
 if __name__ == '__main__':
