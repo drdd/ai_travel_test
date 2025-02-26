@@ -42,7 +42,7 @@ def get_message():
                 if thread_id == "":
                     return jsonify({"msg": f"Ошибка потока OpenAI"}), 400
                 answer = get_response(client, assistant, thread_id)
-                answer = answer.replace('"', "'")
+                answer = answer.replace('"', "'").replace("\n", "")
                 return jsonify({"msg": f'{answer}', "thread_id": f"{thread_id}"}), 200
             except Exception as e:
                 return jsonify({"msg": f"Ошибка {e}"}), 400
