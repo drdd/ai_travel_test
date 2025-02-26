@@ -45,11 +45,8 @@ def get_message():
                     return jsonify({"msg": f"Ошибка потока OpenAI"}), 400
                 answer = get_response(client, assistant, thread_id)
 
-                encoded_data = encode_json({"msg": f'{answer}', "thread_id": f"{thread_id}"})
-                decoded_data = decode_json(encoded_data)
-                json_str = json.dumps(decoded_data, ensure_ascii=False)
-                return jsonify(json.loads(json_str)), 200
-                #return jsonify({"msg": f'{answer}', "thread_id": f"{thread_id}"}), 200
+                answer = answer.replace("*","+").replace("\n","<br/>").replace('"', "'")
+                return jsonify({"msg": f'{answer}', "thread_id": f"{thread_id}"}), 200
             except Exception as e:
                 return jsonify({"msg": f"Ошибка {e}"}), 400
         else:
@@ -81,7 +78,7 @@ def send_message():
                     if thread_id == "":
                         return jsonify({"msg": f"Ошибка потока OpenAI"}), 400
 
-                    assistent_queary(client, thread_id, data['msg'])
+                    assistent_queary(client, assistant, thread_id, data['msg'])
                     return jsonify({"msg": "ok", "thread_id": f"{thread_id}"}), 200
                 except Exception as e:
                     return jsonify({"msg": f"Ошибка {e}"}), 400
@@ -112,11 +109,16 @@ def get_exists_thread_id(client, thread_id):
             return ""
         return ""
 
-def assistent_queary(client, thread_id, message):
+def assistent_queary(client, assistant, thread_id, message):
     client.beta.threads.messages.create(
         thread_id=thread_id,
         role="user",
         content=message
+    )
+    run = client.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=assistant.id,
+        instructions=""
     )
 
 def get_response(client, assistant, thread_id):
@@ -135,44 +137,6 @@ def get_response(client, assistant, thread_id):
             if msg.content[0].type == "text":
                 return msg.content[0].text.value
 
-
-def encode_string(input_string):
-    encoded_string = urllib.parse.quote(input_string, safe='')
-    return encoded_string
-
-def encode_json(json_data):
-    if isinstance(json_data, dict):
-        encoded_data = {}
-        for key, value in json_data.items():
-            encoded_key = encode_string(key)
-            encoded_value = encode_json(value)
-            encoded_data[encoded_key] = encoded_value
-        return encoded_data
-    elif isinstance(json_data, list):
-        return [encode_json(item) for item in json_data]
-    elif isinstance(json_data, str):
-        return encode_string(json_data)
-    else:
-        return json_data
-
-def decode_string(encoded_string):
-    decoded_string = urllib.parse.unquote(encoded_string)
-    return decoded_string
-
-def decode_json(json_data):
-    if isinstance(json_data, dict):
-        decoded_data = {}
-        for key, value in json_data.items():
-            decoded_key = decode_string(key)
-            decoded_value = decode_json(value)
-            decoded_data[decoded_key] = decoded_value
-        return decoded_data
-    elif isinstance(json_data, list):
-        return [decode_json(item) for item in json_data]
-    elif isinstance(json_data, str):
-        return decode_string(json_data)
-    else:
-        return json_data
 
 if __name__ == '__main__':
     app.run(debug=True)
